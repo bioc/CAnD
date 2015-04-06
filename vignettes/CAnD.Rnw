@@ -1,0 +1,355 @@
+%\VignetteIndexEntry{Detecting heterogenity in population structure across chromosomes with the "CAnD" package}
+%\VignettePackage{CAnD}
+\documentclass[12pt]{article}
+
+
+<<style, eval=TRUE, echo=FALSE, results=tex>>=
+BiocStyle::latex()
+@
+
+
+\usepackage{cite}
+\usepackage{amsmath,amsfonts}
+\usepackage{Sweave}
+\SweaveOpts{keep.source=TRUE,eps=FALSE,pdf=FALSE,png=TRUE,include=FALSE,width=4,height=4.5,resolution=150}
+\setkeys{Gin}{width=0.5\textwidth}
+
+% use a vertical rule for R output instead of prompts for R input
+\usepackage{fancyvrb}
+\definecolor{darkgray}{gray}{0.2}
+\DefineVerbatimEnvironment{Sinput}{Verbatim}{xleftmargin=1em,formatcom={\color{darkgray}}}
+\DefineVerbatimEnvironment{Soutput}{Verbatim}{xleftmargin=1em,frame=leftline,framerule=.6pt,rulecolor=\color{darkgray},framesep=1em,formatcom={\color{darkgray}}}
+\fvset{listparameters={\setlength{\topsep}{0pt}}}
+\renewenvironment{Schunk}{\vspace{\topsep}}{\vspace{\topsep}}
+
+
+\author{Caitlin McHugh$^{1*}$ \\
+	[1em] \small{$^{1}$ Department of Biostatistics, University of Washington} \\ 
+	\small{\texttt{$^*$mchughc (at) uw.edu}}}
+
+\title{Detecting Heterogeneity in Population Structure Across Chromosomes: the CAnD Package}
+
+\date{\today}
+
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+With the advent of dense, accurate and inexpensive genomic data, researchers are able to perform
+analyses that estimate ancestry across the entire genome. In particular, ancestry can be inferred
+across regions of the genome that are interesting for a disease trait, or can be 
+inferred chromosome-wide to identify regions that have been passed down by an ancestral
+population.
+
+The \Rpackage{CAnD} package provides functionality for two methods that compare proportion ancestry in
+a sample set across chromosomes or chromosomal regions [1]. Both of the
+methods calculate p-values for the observed difference in ancestry across chromosomes, properly 
+accounting for multiple testing. An overall CAnD statistic and p-value are stored for each
+analysis.
+
+This vignette describes a typical analysis workflow and includes some details regarding the statistical theory 
+behind \Rpackage{CAnD}.  For more technical details, please see reference [1].
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Example workflow for CAnD}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Preparing a data set for analysis}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+For our example, we will use a set of simulated data, the \Rcode{ancestries} data set from the \Rpackage{CAnD} package.  
+We begin by loading relevant libraries, subsetting the data,
+and producing summary statistics.  
+
+<<loadLibrariesAndData>>=
+library(CAnD)
+data(ancestries)
+dim(ancestries)
+@
+
+We initially can look at the columns of our \Rcode{ancestries} object that correspond to the estimated proportion 
+ancestries of chromosome one.
+<<viewData>>=
+ancestries[1:2,c(1,2,25,48)]
+@
+
+The \Rcode{ancestries} data.frame holds simulated proportions for a set of 50 samples. 
+Every row corresponds to a sample and each sample has a unique id, stored as \Rcode{IID}. 
+We imagine the proportions displayed in \Rcode{ancestries} were estimated from a program such as FRAPPE 
+[2], ADMIXTURE [3] or RFMix [4]. In this particular example, three ancestral subpopulations were assumed, 
+namely \Rcode{Euro}, \Rcode{Afr} and \Rcode{Asian}. 
+The proportions can be locus-specific ancestry averaged across chromosomes, or could be any other sort of 
+ancestral estimate for a portion of the genome. Furthermore, there can be any number of 
+ancestral populations. Of course, the results are only interesting with two or more ancestries.
+In our sample data set, every sample has a column corresponding to the ancestral proportion for each of the three ancestries for all autosomal chromosomes 1-22 and the X chromosome.
+The three proportions should sum to one for each chromosome within a sample. 
+
+First we can examine the estimated proportions, both by sample and by ancestry.
+We create histograms of these values, seen in Figure~\ref{fig:hists}.
+
+<<plotHists,fig=TRUE>>=
+
+par(mfrow=c(2,2))
+hist(ancestries$Afr_1,main="Est Proportion African Ancestry\nChromosome 1",
+     xlab="Chr 1 Prop African Ancest",cex.main=0.8)
+hist(ancestries$Afr_2,main="Est Proportion African Ancestry\nChromosome 2",
+     xlab="Chr 2 Prop African Ancest",cex.main=0.8)
+
+afrCols <- seq(from=25,to=(25+22))
+asianCols <- seq(from=(25+22+1),to=ncol(ancestries))
+hist(as.numeric(ancestries[1,afrCols]),main="Est Proportion African Ancestry\nGenome-wide, Sample 1",
+     xlab="Sample 1 Prop African Ancestry",cex.main=0.8)
+hist(as.numeric(ancestries[1,asianCols]),main="Est Proportion Asian Ancestry\nGenome-wide, Sample 1",
+     xlab="Sample 1 Prop Asian Ancestry",cex.main=0.8)
+@
+
+
+\begin{figure}
+\centering
+\includegraphics{CAnD-plotHists}
+\caption{Histograms of estimated proportion African ancestry for all samples on chromosome 1 and 2, and estimated proportion African and Asian ancestry, genome-wide, for Sample 1.}
+\label{fig:hists}
+\end{figure}
+
+
+The \Rcode{data.frame} is the only input file required to run the CAnD tests. For each test, we will
+subset the columns to the particular ancestry of interest.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Running the CAnD Test}\label{sec:CAnD}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+The CAnD test detects heterogeneity in population structure patterns across chromosomes.
+CAnD uses local ancestry estimated from SNP genotype data to identify significant differences in ancestral contributions to chromosomes in samples from admixed populations.
+Statistically, CAnD compares a chromosome $c$ with a pool of all
+other chromosomes. The null hypothesis is that the mean difference between ancestry proportion on
+chromosome $c$ and the mean ancestry proportion across all other chromosomes is zero.
+For more details, see Section~\ref{paramMethods} and reference [1].
+
+We will perform the CAnD test on the estimated proportions of European ancestry.
+In order to do this, we first subset \Rcode{ancestries} to the columns of interest.
+
+<<subsetp>>=
+euroCols <- seq(from=2,to=(2+22))
+head(ancestries[,euroCols[20:23]],2)
+colnames(ancestries[euroCols])
+
+euroEsts <- ancestries[,euroCols]
+dim(euroEsts)
+head(euroEsts[,1:5],2)
+@
+
+Then, we can simply run the CAnD test across all chromosomes for the estimated 
+European ancestry in our 50 samples.
+
+<<param>>=
+param_cRes <- CAnD(euroEsts)
+param_cRes
+
+test(param_cRes)
+overallpValue(param_cRes)
+overallStatistic(param_cRes)
+BonfCorr(param_cRes)
+@
+
+We notice that the CAnD p-value is significant when considering the difference in 
+chromosomal estimates of European ancestry genome-wide. To further investigate this, we can
+examine the p-values calculated for each chromosome. 
+
+<<param_results>>=
+pValues(param_cRes)
+@
+
+The p-value comparing the X chromosome to the autosomes is highly significant, implying that
+the estimated European ancestry on the X chromosome is statistically significantly different
+from that on the autosomes.
+
+If we run the CAnD test with a set of 20 samples or smaller, we will receive a warning that perhaps the sample size
+is too small for this method. As an alternative, we can run the non-parametric CAnD test.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Running the Non-Parametric CAnD Test}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+The non-parametric CAnD test is an alternative to the CAnD test introduced in Section~\ref{sec:CAnD} 
+when there is a small number of samples.
+The non-parametric CAnD test calculates $S_k$, the number of samples for which the difference between the mean
+ancestry of all chromosomes excluding chromosome $c$ and chromosome $c$ is greater than zero. Under
+the null hypothesis that there is no ancestry difference between chromosome $c$ and a pool of the other
+chromosomes, $S_k$ follows a Binomial$(n, 0.5)$ distribution, where $n$ is the number of samples.
+For more details, see Section~\ref{nonParamMethods} and reference [1].
+
+To run the non-parametric CAnD test, we first must subset \Rcode{ancestries} to the proportion of
+ancestry for one subpopulation. For this vignette, we will consider the estimated proportion of Asian ancestry
+across all chromosomes for each sample.
+
+<<subsetNonP>>=
+head(ancestries[,asianCols[6:10]],2)
+colnames(ancestries[asianCols])
+
+asianEsts <- ancestries[,asianCols]
+dim(asianEsts)
+@
+
+We now have the proper input to call \Rfunction{nonParam\_CAnD} for the Asian ancestral subpopulation.
+We can consider all ancestral subpopulations in turn, or simply consider the Asian ancestry.
+Furthermore, we can consider all chromosomes genome-wide, or perhaps consider just the autosomes by 
+subsetting the columns further in \Rcode{ancestries}.
+Here, we will perform the analysis on the Asian ancestry for all chromosomes genome-wide.
+
+By default, the non-parametric CAnD test will correct the p-values calculated for multiple
+testing using Bonferroni multiple testing correction, where the number of tests corresponds to the 
+number of chromosomes or chromosomal regions under examination. Genome-wide this is 23 tests, one 
+for each of the autosomes and one for the X chromosome.
+Accessor functions for the resulting \Rcode{CAnDResult} allow us to view the results.
+
+<<nonP>>=
+cRes <- nonParam_CAnD(asianEsts)
+cRes
+
+summary(pValues(cRes))
+test(cRes)
+overallpValue(cRes)
+overallStatistic(cRes)
+BonfCorr(cRes)
+@
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Visualizing Results}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+There are two plotting functions available in \Rpackage{CAnD} to visualize results 
+from the CAnD method.
+
+The \Rfunction{plotPvals} function plots the calculated $p$-values against each chromosome/chromosomal region.
+We will show the results from the parametric CAnD test in Figure~\ref{fig:pvals}.
+<<plotb, fig=TRUE>>=
+plotPvals(param_cRes, main="Parametric CAnD P-values\nProportion European Ancestry Genome-wide")
+@
+
+\begin{figure}
+\centering
+\includegraphics{CAnD-plotb}
+\caption{The calculated p-value from the parametric CAnD method to detect heterogeneity in proportion European ancestry by chromosome.}
+\label{fig:pvals}
+\end{figure}
+
+
+The \Rfunction{barPlotAncest} function plots the proportion ancestry for a given chromosome/chromosomal region for each sample. This visualization is an efficient way to compare the proportions ancestry across the entire sample.
+Note this is simply a summary plot and does not require running of the CAnD tests to produce.
+We see the results for our sample in Figure~\ref{fig:barplot}.
+<<plot2, fig=TRUE,width=8>>=
+chr1 <- ancestries[,c("Euro_1","Afr_1","Asian_1")]
+barPlotAncest(chr1,title="Chromosome 1 Ancestry Proportions")
+@
+
+\begin{figure}
+\centering
+\includegraphics{CAnD-plot2}
+\caption{Barplot of chromosome 1 ancestry proportions, ordered by increasing proportion European ancestry.}
+\label{fig:barplot}
+\end{figure}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Methods in brief}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Define the proportion ancestry from subpopulation $k$ for individual $i$ to be $a_{ik}$, $i \in \{1,\dots,N\}$.
+Let $G_{-c}=\{1,2,\dots,c-1,c+1,\dots,22,X\}$.
+For a given chromosome of interest $c$, we calculate the pooled mean of all chromosomes excluding
+$c$ as 
+$$
+a_{ik}^{-c}=\frac{1}{22}\sum_{M\in G_{-c}}a_{ik}^M
+$$
+The difference in ancestry between a given chromosome $c$ and the average of all other chromosomes, in
+individual $i$ and for a given ancestry subpopulation $k$, is 
+$$
+D_{ik}^c=a_{ik}^{-c}-a_{ik}^c
+$$
+Denote the mean $D_{ik}^c$ across all individuals $i$ as $\overline{D_k^c}$.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{CAnD Methods}\label{paramMethods}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+The CAnD method tests for heterogeneity across $m$ chromosomes [1].
+We first define the t-statistic comparing differences in ancestry subpopulation $k$ on chromosome $c$ with
+a pool of the other chromosomes as
+$$
+T_k = \overline{D_k^c} / \sqrt{v^2_k/n}
+$$ where $v_k^2=\frac{1}{n-1}\sum_{i=1}^n (D_{ik}^c-\overline{D_k^c})^2$ is the sample variance.
+Note this statistic takes into account the average ancestry difference between chromosome $c$ and the mean
+ancestry of the other chromosomes across all individuals as well as within individuals.
+$T_k$ has $n-1$ degrees of freedom and tests the null hypothesis that the mean difference between the 
+ancestry proportion on chromosome $c$ and the ancestry proportion across all other chromosomes for subpopulation $k$ is zero.
+We calculate $T_k$ for each chromosome $c$ of interest, and obtain $m$ $p$-values $p_c,c\in \{ 1,\dots,m\}$.
+
+The overall CAnD statistic is calculated as
+$$
+\chi_{CAnD}^2=-2\sum_{c=1}^m ln(p_c)
+$$ which is an implementation of Fisher's combined probability test.
+Under the null hypothesis, $\chi^2_{CAnD}\sim \chi^2_{2m}$ with the assumption that the p-values are independent
+and that $p_c \sim U(0,1)$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Non-Parametric CAnD Methods}\label{nonParamMethods}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+The non-parametric CAnD method is most beneficial with small sample sizes [1]. 
+Let $S_k$ be the non-parametric statistic for the number of individuals in $N$ for which
+$D_{ik}^c>0$,
+$$
+S_k=\sum_{i \in N} \mathbb{I}\{ D_{ik}^c >0\}
+$$
+$S_k$ is equivalent to a sign statistic and under the null hypothesis of no ancestry difference between chromosome $c$ and a pool of the other chromosomes, $S_k$ follows a Binomial($n$,0.5) distribution, where $n$ is the number of individuals in the set $N$.
+We obtain $S_k$ and the corresponding $p$-value, $p_c$, for all $m$ chromosomes in turn. 
+
+To find the CAnD statistic, we apply Fisher's combined probability test to get
+$$
+\chi_{CAnD}^2 = -2 \sum_{c=1}^m ln(p_c)
+$$
+which assumes $p_c\sim U(0,1)$ and all $p_c$ are independent. 
+Under these assumptions, $\chi_{CAnD}^2 \sim \chi_{2m}^2$.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Session Info}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+<<sessInfo, results=tex, echo=FALSE>>=
+toLatex(sessionInfo())
+@
+
+<<resetOptions, echo=FALSE>>=
+options(prompt="> ", continue="+ ")
+@ 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{References}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+1. McHugh, C., Brown, L., Thornton, T.
+Detecting heterogeneity in population structure across chromosomes in admixed populations.
+Manuscript in Preparation.
+
+2. Tang, H., Peng, J., Wang, P., Risch, N.J.
+Estimation of individual admixture: Analytical and study design considerations.
+Genetic Epidemiology, 2005.
+
+3. Alexander, D.H., Novembre, J., Lange, K. 
+Fast model-based estimation of ancestry in unrelated individuals. 
+Genome Research, 2009.
+
+4. Maples, B.K., Gravel, S., Kenny, E.E., Bustamante, C.D. 
+RFMix: A discriminative modeling approach for rapid and robust local-ancestry
+inference. American Journal of Human Genetics, 2013.
+
+
+\end{document}

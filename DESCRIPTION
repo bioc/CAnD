@@ -1,0 +1,18 @@
+Package: CAnD
+Type: Package
+Title: Perform Chromosomal Ancestry Differences (CAnD) Analyses
+Version: 0.99.3
+Date: 2015-04-02
+Author: Caitlin McHugh
+Maintainer: Caitlin McHugh <mchughc@uw.edu>
+Imports: methods, ggplot2, reshape
+Suggests: RUnit, BiocGenerics, BiocStyle
+Description: Functions to perform the non-parametric and parametric
+        CAnD tests on a set of ancestry proportions. For a particular
+        ancestral subpopulation, a user will supply the estimated
+        ancestry proportion for each sample, and each chromosome or
+        chromosomal segment of interest. A p-value for each chromosome
+        as well as an overall CAnD p-value will be returned for each
+        test. Plotting functions are also available.
+License: Artistic-2.0
+biocViews: Genetics, StatisticalMethod, GeneticVariability, SNP
