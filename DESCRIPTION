@@ -1,7 +1,7 @@
 Package: CAnD
 Type: Package
 Title: Perform Chromosomal Ancestry Differences (CAnD) Analyses
-Version: 0.99.3
+Version: 1.0.0
 Date: 2015-04-02
 Author: Caitlin McHugh
 Maintainer: Caitlin McHugh <mchughc@uw.edu>
