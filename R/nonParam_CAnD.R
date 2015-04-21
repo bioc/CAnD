@@ -55,7 +55,9 @@ nonParam_CAnD <- function(chrAncest,bonfCorr=TRUE){
   diff_inds <- diff_means>0
   
   m <- apply(diff_inds,2,function(x){sum(x)})
-  pval <- 2*pbinom(m,n,0.5)
+  mnDF <- data.frame(m=m,n=n)  
+  pval <- apply(mnDF,1,function(x){binom.test(x[1],x[2])$p.value})
+ 
   if(bonfCorr){ pval <- pval*numChrs }
   pval <- ifelse(pval>1,1,pval)
   names(pval) <- colnames(chrAncest)

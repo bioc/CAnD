@@ -23,7 +23,7 @@ getDiffMatrices <- function(chrAncest,diff=TRUE){
   n <- nrow(chrAncest)
   
   rowmns <- function(x){
-    rowMeans(chrAncest[-c(x+1)])
+    rowMeans(chrAncest[-c(x)])
   }
   res <- vapply(seq_len(numChrs),rowmns,rep(0,n))
   #  res holds the mean ancestry prop excluding each of the chrs in turn
