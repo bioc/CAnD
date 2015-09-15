@@ -30,8 +30,7 @@ The CAnD p-value.
 }
 \examples{
     data(ancestries)
-    overallpValue( nonParam_CAnD(ancestries[,c(2:5)]) ) 
-    overallpValue( nonParam_CAnD(ancestries[,c(3:6)]) ) 
+    overallpValue( CAnD(ancestries[,c(2:5)]) ) 
 }
 \author{
 Caitlin McHugh

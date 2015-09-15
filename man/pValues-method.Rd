@@ -30,7 +30,6 @@ A vector of p-values from the CAnD test.
 }
 \examples{
     data(ancestries)
-    pValues( nonParam_CAnD(ancestries[,c(2:5)]) ) 
     pValues( CAnD(ancestries[,c(5:12)]) ) 
 }
 \author{

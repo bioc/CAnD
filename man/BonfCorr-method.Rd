@@ -34,8 +34,7 @@ p-values for a \code{CAnD} object
 }
 \examples{
     data(ancestries)
-    BonfCorr( nonParam_CAnD(ancestries[,c(2:5)]) ) 
-    BonfCorr( nonParam_CAnD(ancestries[,c(2:5)],bonfCorr=FALSE) ) 
+    BonfCorr( CAnD(ancestries[,c(2:5)]) ) 
 }
 \author{
 Caitlin McHugh

@@ -48,9 +48,8 @@ across regions of the genome that are interesting for a disease trait, or can be
 inferred chromosome-wide to identify regions that have been passed down by an ancestral
 population.
 
-The \Rpackage{CAnD} package provides functionality for two methods that compare proportion ancestry in
-a sample set across chromosomes or chromosomal regions [1]. Both of the
-methods calculate p-values for the observed difference in ancestry across chromosomes, properly 
+The \Rpackage{CAnD} package provides functionality for the method that compares proportion ancestry in
+a sample set across chromosomes or chromosomal regions [1]. We calculate p-values for the observed difference in ancestry across chromosomes, properly 
 accounting for multiple testing. An overall CAnD statistic and p-value are stored for each
 analysis.
 
@@ -170,57 +169,6 @@ The p-value comparing the X chromosome to the autosomes is highly significant, i
 the estimated European ancestry on the X chromosome is statistically significantly different
 from that on the autosomes.
 
-If we run the CAnD test with a set of 20 samples or smaller, we will receive a warning that perhaps the sample size
-is too small for this method. As an alternative, we can run the non-parametric CAnD test.
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Running the Non-Parametric CAnD Test}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-The non-parametric CAnD test is an alternative to the CAnD test introduced in Section~\ref{sec:CAnD} 
-when there is a small number of samples.
-The non-parametric CAnD test calculates $S_k$, the number of samples for which the difference between the mean
-ancestry of all chromosomes excluding chromosome $c$ and chromosome $c$ is greater than zero. Under
-the null hypothesis that there is no ancestry difference between chromosome $c$ and a pool of the other
-chromosomes, $S_k$ follows a Binomial$(n, 0.5)$ distribution, where $n$ is the number of samples.
-For more details, see Section~\ref{nonParamMethods} and reference [1].
-
-To run the non-parametric CAnD test, we first must subset \Rcode{ancestries} to the proportion of
-ancestry for one subpopulation. For this vignette, we will consider the estimated proportion of Asian ancestry
-across all chromosomes for each sample.
-
-<<subsetNonP>>=
-head(ancestries[,asianCols[6:10]],2)
-colnames(ancestries[asianCols])
-
-asianEsts <- ancestries[,asianCols]
-dim(asianEsts)
-@
-
-We now have the proper input to call \Rfunction{nonParam\_CAnD} for the Asian ancestral subpopulation.
-We can consider all ancestral subpopulations in turn, or simply consider the Asian ancestry.
-Furthermore, we can consider all chromosomes genome-wide, or perhaps consider just the autosomes by 
-subsetting the columns further in \Rcode{ancestries}.
-Here, we will perform the analysis on the Asian ancestry for all chromosomes genome-wide.
-
-By default, the non-parametric CAnD test will correct the p-values calculated for multiple
-testing using Bonferroni multiple testing correction, where the number of tests corresponds to the 
-number of chromosomes or chromosomal regions under examination. Genome-wide this is 23 tests, one 
-for each of the autosomes and one for the X chromosome.
-Accessor functions for the resulting \Rcode{CAnDResult} allow us to view the results.
-
-<<nonP>>=
-cRes <- nonParam_CAnD(asianEsts)
-cRes
-
-summary(pValues(cRes))
-test(cRes)
-overallpValue(cRes)
-overallStatistic(cRes)
-BonfCorr(cRes)
-@
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Visualizing Results}
@@ -229,15 +177,15 @@ There are two plotting functions available in \Rpackage{CAnD} to visualize resul
 from the CAnD method.
 
 The \Rfunction{plotPvals} function plots the calculated $p$-values against each chromosome/chromosomal region.
-We will show the results from the parametric CAnD test in Figure~\ref{fig:pvals}.
+We will show the results from the CAnD test in Figure~\ref{fig:pvals}.
 <<plotb, fig=TRUE>>=
-plotPvals(param_cRes, main="Parametric CAnD P-values\nProportion European Ancestry Genome-wide")
+plotPvals(param_cRes, main="CAnD P-values\nProportion European Ancestry Genome-wide")
 @
 
 \begin{figure}
 \centering
 \includegraphics{CAnD-plotb}
-\caption{The calculated p-value from the parametric CAnD method to detect heterogeneity in proportion European ancestry by chromosome.}
+\caption{The calculated p-value from the CAnD method to detect heterogeneity in proportion European ancestry by chromosome.}
 \label{fig:pvals}
 \end{figure}
 
@@ -290,36 +238,17 @@ T_k = \overline{D_k^c} / \sqrt{v^2_k/n}
 $$ where $v_k^2=\frac{1}{n-1}\sum_{i=1}^n (D_{ik}^c-\overline{D_k^c})^2$ is the sample variance.
 Note this statistic takes into account the average ancestry difference between chromosome $c$ and the mean
 ancestry of the other chromosomes across all individuals as well as within individuals.
-$T_k$ has $n-1$ degrees of freedom and tests the null hypothesis that the mean difference between the 
-ancestry proportion on chromosome $c$ and the ancestry proportion across all other chromosomes for subpopulation $k$ is zero.
+$T_k$ has $n-1$ degrees of freedom and is a test statistic that tests the null hypothesis that 
+the mean difference between the ancestry proportion on chromosome $c$ and the ancestry proportion across all
+other chromosomes for subpopulation $k$ is zero.
 We calculate $T_k$ for each chromosome $c$ of interest, and obtain $m$ $p$-values $p_c,c\in \{ 1,\dots,m\}$.
-
-The overall CAnD statistic is calculated as
-$$
-\chi_{CAnD}^2=-2\sum_{c=1}^m ln(p_c)
-$$ which is an implementation of Fisher's combined probability test.
-Under the null hypothesis, $\chi^2_{CAnD}\sim \chi^2_{2m}$ with the assumption that the p-values are independent
-and that $p_c \sim U(0,1)$.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Non-Parametric CAnD Methods}\label{nonParamMethods}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-The non-parametric CAnD method is most beneficial with small sample sizes [1]. 
-Let $S_k$ be the non-parametric statistic for the number of individuals in $N$ for which
-$D_{ik}^c>0$,
-$$
-S_k=\sum_{i \in N} \mathbb{I}\{ D_{ik}^c >0\}
-$$
-$S_k$ is equivalent to a sign statistic and under the null hypothesis of no ancestry difference between chromosome $c$ and a pool of the other chromosomes, $S_k$ follows a Binomial($n$,0.5) distribution, where $n$ is the number of individuals in the set $N$.
-We obtain $S_k$ and the corresponding $p$-value, $p_c$, for all $m$ chromosomes in turn. 
-
-To find the CAnD statistic, we apply Fisher's combined probability test to get
-$$
-\chi_{CAnD}^2 = -2 \sum_{c=1}^m ln(p_c)
-$$
-which assumes $p_c\sim U(0,1)$ and all $p_c$ are independent. 
-Under these assumptions, $\chi_{CAnD}^2 \sim \chi_{2m}^2$.
-
+Then, we define 
+$$\widetilde T_k = \begin{pmatrix}T_k^1 \\ T_k^2 \\ \vdots \\ T_k^m \end{pmatrix} \sim \mbox{MVN}(0, \Sigma)
+$$ It follows that combined CAnD statistic, allowing for correlation between $T_k^c$ and $T_k^{c'}$, is
+\begin{equation}
+\chi^2_{CAnD}=\widetilde T'_k \Sigma^{-1} \widetilde T_k
+\end{equation}
+which follows a $\chi^2_m$ distribution under the null hypothesis.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Session Info}

@@ -30,8 +30,7 @@ The CAnD test statistic stored in the object.
 }
 \examples{
     data(ancestries)
-    overallStatistic( nonParam_CAnD(ancestries[,c(2:5)]) ) 
-    overallStatistic( nonParam_CAnD(ancestries[,c(3:6)]) ) 
+    overallStatistic( CAnD(ancestries[,c(2:5)]) ) 
 }
 \author{
 Caitlin McHugh

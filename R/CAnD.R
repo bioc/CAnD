@@ -49,12 +49,7 @@ CAnD <- function(chrAncest,bonfCorr=TRUE){
   
   if(!sum(is.na(chrAncest))==0){
     warning("NA values will be excluded from the analysis.") }
-  
-  if(nrow(chrAncest)<=20){
-    warning("The number of samples may be too small for assumptions to hold.
-            Consider running 'nonParam_CAnD' instead.")
-  }
-  
+    
   diff_means <- getDiffMatrices(chrAncest,diff=FALSE)
   
   pairedTtest <- function(x) 
@@ -63,8 +58,8 @@ CAnD <- function(chrAncest,bonfCorr=TRUE){
   }
   pval <- vapply(seq_len(numChrs), pairedTtest, 0)
   
-  cand_stat <- -2*sum(log(pval))
-  cand <- 1-pchisq(cand_stat,df=2*numChrs)
+  # calculate correlation between cand statistics
+  combinedRes <- calc_combP(chrAncest)
   
   if(bonfCorr){ pval <- pval*numChrs }
   
@@ -74,8 +69,8 @@ CAnD <- function(chrAncest,bonfCorr=TRUE){
   return( new("CAnDResult",
               test = "parametric",
               pValues = pval,
-              overallStatistic = cand_stat,
-              overallpValue = cand,
+              overallStatistic = as.numeric(combinedRes["statistic"]),
+              overallpValue = as.numeric(combinedRes["pvalue"]),
               BonfCorr = bonfCorr) )  
 }
 

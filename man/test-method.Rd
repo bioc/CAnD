@@ -14,7 +14,7 @@ test(object)
     \item{object}{An object of type \code{CAnDResult} }
 }
 \value{
-Either `non-parametric' or `parametric,' depending on which test was run to produce the object.
+`Parametric.' Note the non-parametric CAnD test is defunct now.
 }
 \section{Methods}{
 \describe{ Defined methods include:
@@ -30,7 +30,6 @@ Either `non-parametric' or `parametric,' depending on which test was run to prod
 }
 \examples{
     data(ancestries)
-    test( nonParam_CAnD(ancestries[,c(2:5)]) ) 
     test( CAnD(ancestries[,c(2:5)]) ) 
 }
 \author{
