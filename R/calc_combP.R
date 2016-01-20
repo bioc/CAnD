@@ -89,6 +89,6 @@ calc_combP <- function(chrAncest){
   
   # calculate new stat
   newstat <- res["tstat",]%*%solve(sig.matrix)%*%res["tstat",]
-  pval <- pchisq(newstat,df=numChrs,lower.tail=FALSE)
+  pval <- pchisq(newstat,df=(numChrs-1),lower.tail=FALSE)
   return(c(statistic=newstat,pvalue=as.numeric(pval)))
 }
