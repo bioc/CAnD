@@ -3,7 +3,7 @@ Type: Package
 Title: Perform Chromosomal Ancestry Differences (CAnD) Analyses
 Version: 1.5.0
 Date: 2016-01-20
-Author: Caitlin McHugh
+Author: Caitlin McHugh, Timothy Thornton
 Maintainer: Caitlin McHugh <mchughc@uw.edu>
 Imports: methods, ggplot2, reshape
 Suggests: RUnit, BiocGenerics, BiocStyle
