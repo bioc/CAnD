@@ -36,7 +36,7 @@ Caitlin McHugh
 }
 \references{
 McHugh, C., Brown, L., Thornton, T.
-Detecting heterogeneity in population structure across chromosomes in admixed populations.
-Manuscript in Preparation.
+Detecting heterogeneity in population structure across the genome in admixed populations.
+Genetics, 2016.
 }
 
